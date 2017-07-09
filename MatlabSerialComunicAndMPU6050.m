@@ -5,16 +5,10 @@
 
 
     fclose (porta_serial);
-    
+    %clear;
     clc;
-    
-    %Dados a serem enviados ao Arduino no formato double    
-    for i = 1:10
-        dataInArduinoDouble(i) = i*1.1;
-    end
-     %dataInArduinoDouble(1) = 115.123;
 
-    porta_serial = serial ('COM6', 'BaudRate', 9600);
+    porta_serial = serial ('COM5', 'BaudRate', 9600);
 
     fopen(porta_serial);
 
@@ -23,32 +17,23 @@
     while ( (strcmp (fscanf(porta_serial,'%s'),'SIM')) == 0 ) 
        %disp ('Esperando SIM');
     end
-   
+      
+    %ang = zeros (1,181,'int16');
+    ang (1:2:181) = 0:90;
+    ang (180:-2:2) = 91:180;
     
-    %flushinput(porta_serial); %limpa o buffer da porta serial
-    
-    for i=1:180 
-     %i = 1;   
-     %dataInArduinoDouble(i) = 30;           
-              dataInArduinoString = num2str(i,10); %Converte o numero double a ser enviado em string
-
-            %for i = 1:length(dataInArduinoString)
-            %    fwrite(porta_serial,dataInArduinoString(i),'char'); 
-            %end
-            %fwrite(porta_serial,'c','char'); 
-
-            fprintf (porta_serial,'%s*',dataInArduinoString); %Envia o string para o Matlab
-            disp ( 'Enviei: '); %Exibe o string enviado
+    for i=0:180  
+             %converte o número a ser enviado em string
+             dataInArduinoString = num2str(ang(i+1),10); %Converte o numero double a ser enviado em string
+             %Envia o string para o Matlab
+            fprintf (porta_serial,'%s*',dataInArduinoString);
+            disp ( 'Enviei: '); 
+            %Exibe o string enviado
             disp(dataInArduinoString);
 
             a = '0';
             while (a ~= '*')
-            %while (a ~= '\0')
-               % while ( porta_serial.BytesAvailable < 0 ) %aguarda a resposta do Arduino
-               % end
-
                if ( porta_serial.BytesAvailable > 0 )
-                  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                   a = fscanf(porta_serial,'%s'); %Exibe o string enviado pelo arduino
                   disp ( 'Recebi: ');
                   disp( a );
@@ -58,12 +43,9 @@
             a = fscanf(porta_serial,'%s'); %Exibe o string enviado pelo arduino
             disp ( 'Final: ');
             disp( a );
-            dataOutArduinoDouble(i+1) = str2double(a);
+            dataOutArduinoDouble( ang(i+1) + 1) = str2double(a);
             
-            %while ( (strcmp (fscanf(porta_serial,'%s'),'SIM')) == 0 ) 
-                %disp ('Esperando SIM');
-            % end
-    
+  
     end 
     
     

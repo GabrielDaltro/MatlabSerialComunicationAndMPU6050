@@ -1,98 +1,101 @@
-#include<Wire.h>
 #include<math.h>
 #include<Servo.h>
 
-const int MPU=0x68;  
-//Variaveis para armazenar valores dos sensores
-float AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
-float x,y;
+#include <Chauvenet.h>
+#include <MPU6050.h>
+#include <SerialMatlab.h>
 
-byte in = 0.0; // Variável que armazena os dados recebidos do matlab 
-byte out = 0.0;
-byte InOut[20];
-byte index = 0;
-int i = 0;
-byte LenthOfString = 0;
+#define TAM 10
 
-int intDataReceiver;
-String StringReceiver;
-
-char concatCharReceiver[30];
-char charReceiver = '0';
-
+Chauvenet chauvenet; 
+SerialMatlab serialmatlab1;
 Servo myServo;
+MPU6050 mpu6050;
 
-void setup() {
-   //Configura a porta serial para a taxa de transmissão de 9600 bits/s
-    Serial.begin (9600);
+int offset = 0;
+float x,y;
+double VetAngulosLidos[TAM];
+double anguloLido;
+int anguloDestino;
 
-    myServo.attach (8);
-    
-    Wire.begin();
-    Wire.beginTransmission(MPU);
-    //Inicializa o MPU-6050
-    Wire.write(0x6B); 
-    Wire.write(0); 
-    Wire.endTransmission(false);
-    
-    //Config Escalas para Gyro e Accel, a maior nas duas
-    Wire.beginTransmission(MPU);
-    Wire.write(0x1B); 
-    Wire.write(24);
-    Wire.write(24); 
-    Wire.endTransmission(true);
-    
+/***********PARA DEBUG ********************************************/
+ const double* const amostrasDescartadas = chauvenet.getAmostrasRejeitadas();
+ const double* const amostrasNaoDescartadas = chauvenet.getAmostrasNaoRejeitadas();  
+ /********************************************************/
 
-   // Envia o string "SIM" para o matlab para indicar que a porta serial já foi incializada
-   //Ao reeber "SIM", o matlab sabe que já pode enviar e receber dados do arduino
-    Serial.println ("SIM");     
+
+
+void setup() 
+{
+    serialmatlab1.begin(&Serial);
+    mpu6050.begin();
+    myServo.attach (8); 
 }
 
-void loop() {
-
-   if (Serial.available() > 0) // Condição válida quando o arduino recebe algum byte
-   {  
+void loop() 
+{
+      anguloDestino = serialmatlab1.receiverInt();
       
-      while ( charReceiver != '*')
-      {
-        while (Serial.available() == 0) {} // Espera que o Buffer tenha algo para realizar a leitura
-        charReceiver = Serial.read(); // Lê os dados recebidos 
-        Serial.print("charReceiver = "); 
-        Serial.println(charReceiver);  
-        
-        concatCharReceiver[i] = charReceiver;
-        
-        i++;
-      }
-      
-      concatCharReceiver[i] = '\0';
-      i = 0;
-      charReceiver = '0';
-     
-      StringReceiver = concatCharReceiver;
-      intDataReceiver = StringReceiver.toInt();
-
-      intDataReceiver = 180 - (intDataReceiver + 1); // calibração para ficar igual a leitura do MPU6050
-      myServo.write(intDataReceiver);
+      offset = 0;
+      anguloDestino = 180 - (anguloDestino + offset); // calibração para ficar igual a leitura do MPU6050
+      myServo.write(anguloDestino);
       
       delay (2000);
-     
 
-      Wire.beginTransmission(MPU);
-      Wire.write(0x3B);  // inicia leitura do registrador 0x3B (ACCEL_XOUT_H)
-      Wire.endTransmission(false);
-      //Solicita os dados do sensor
-      Wire.requestFrom(MPU,4,true);//pedindo 14 bytes  
+      for (int i = 0; i < TAM; i++)
+      {
+          mpu6050.doReadings();  
+          x = mpu6050.getAcX();
+          y = mpu6050.getAcY();
+          anguloLido = atan2(y,x)*180/3.14;
+          
+          if ( anguloLido > 0)
+              VetAngulosLidos[i] = anguloLido;
+          else
+               VetAngulosLidos[i] = anguloLido + 360.0;   
+         
+         delay (50);
+
+          // PARA DEBUG, APAGAR DEPOIS
+              Serial.print ("X: ");
+              Serial.println (x);
+              Serial.print ("Y: ");
+              Serial.println (y);
+              Serial.print ("Angulo: ");
+              Serial.println (VetAngulosLidos[i]);
+         //
+      }
+
+      chauvenet.setAmostras(VetAngulosLidos,TAM);
+      chauvenet.verificaAmostras();
+
+      //APAGAR DEBUG
+            Serial.print ( "\n\nLista de amostras: ");
+            for (int i = 0; i < TAM; i++)
+            {
+               Serial.print ( VetAngulosLidos[i]);
+               Serial.print (" ");
+            }
+            Serial.println ();
+        
+            // imprime o vetor que armazena as amostras descartadas
+             Serial.print ( "\n\nLista de amostras descartadas: ");
+              for (int i = 0; i < chauvenet.getQtdAmostrasRejeitadas(); i++)
+              {
+                 Serial.print ( amostrasDescartadas[i]);
+                 Serial.print (" ");
+              }
       
-      //Armazena o valor dos sensores nas variaveis correspondentes
-      AcX=Wire.read()<<8|Wire.read();  //0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)     
-      AcY=Wire.read()<<8|Wire.read();  //0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-     
-
-      x = AcX/2024;
-      y = AcY/2024;
-
-      Serial.println( atan2(y,x)*180/3.14 );
-                   
-    }   
+            Serial.print ("\n\nLista de amostras NAO descartadas: ");
+        
+              for (int i = 0; i < chauvenet.getQtdAmostrasNaoRejeitadas(); i++)
+              {
+                Serial.print (amostrasNaoDescartadas[i]);
+                Serial.print (" ");
+              }
+      
+           Serial.print ( "\n\nMedia das amostras apos o descarte: ");
+       //
+    
+     serialmatlab1.send( chauvenet.getMediaAposDescarte() );
 }
