@@ -18,12 +18,6 @@ double VetAngulosLidos[TAM];
 double anguloLido;
 int anguloDestino;
 
-/***********PARA DEBUG ********************************************/
- const double* const amostrasDescartadas = chauvenet.getAmostrasRejeitadas();
- const double* const amostrasNaoDescartadas = chauvenet.getAmostrasNaoRejeitadas();  
- /********************************************************/
-
-
 
 void setup() 
 {
@@ -55,47 +49,10 @@ void loop()
                VetAngulosLidos[i] = anguloLido + 360.0;   
          
          delay (50);
-
-          // PARA DEBUG, APAGAR DEPOIS
-              Serial.print ("X: ");
-              Serial.println (x);
-              Serial.print ("Y: ");
-              Serial.println (y);
-              Serial.print ("Angulo: ");
-              Serial.println (VetAngulosLidos[i]);
-         //
       }
 
       chauvenet.setAmostras(VetAngulosLidos,TAM);
       chauvenet.verificaAmostras();
-
-      //APAGAR DEBUG
-            Serial.print ( "\n\nLista de amostras: ");
-            for (int i = 0; i < TAM; i++)
-            {
-               Serial.print ( VetAngulosLidos[i]);
-               Serial.print (" ");
-            }
-            Serial.println ();
-        
-            // imprime o vetor que armazena as amostras descartadas
-             Serial.print ( "\n\nLista de amostras descartadas: ");
-              for (int i = 0; i < chauvenet.getQtdAmostrasRejeitadas(); i++)
-              {
-                 Serial.print ( amostrasDescartadas[i]);
-                 Serial.print (" ");
-              }
-      
-            Serial.print ("\n\nLista de amostras NAO descartadas: ");
-        
-              for (int i = 0; i < chauvenet.getQtdAmostrasNaoRejeitadas(); i++)
-              {
-                Serial.print (amostrasNaoDescartadas[i]);
-                Serial.print (" ");
-              }
-      
-           Serial.print ( "\n\nMedia das amostras apos o descarte: ");
-       //
     
      serialmatlab1.send( chauvenet.getMediaAposDescarte() );
 }
