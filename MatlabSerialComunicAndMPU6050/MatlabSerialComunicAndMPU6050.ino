@@ -51,8 +51,7 @@ void loop()
               VetAngulosLidos[i] = anguloLido;
           else
                VetAngulosLidos[i] = anguloLido + 360.0;   
-
-         
+               
          delay (50);
       }
 
